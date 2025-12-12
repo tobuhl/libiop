@@ -358,7 +358,7 @@ bool merkle_tree<FieldT, hash_digest_type>::validate_set_membership_proof(
             throw std::invalid_argument("Invalid proof for the empty subset.");
         }
     }
-
+    
     auto rand_it = proof.randomness_hashes.begin();
     auto aux_it = proof.auxiliary_hashes.begin();
 
@@ -366,27 +366,20 @@ bool merkle_tree<FieldT, hash_digest_type>::validate_set_membership_proof(
     std::vector<pos_and_digest_t> S;
     S.reserve(positions.size());
 
-    std::vector<hash_digest_type> leaf_hashes;
-    if (this->make_zk_) {
-        for (auto &leaf : leaf_contents)
-        {
-            const zk_salt_type zk_salt = *rand_it++;
-            leaf_hashes.emplace_back(this->leaf_hasher_->zk_hash(leaf, zk_salt));
+    for (std::size_t i = 0; i < positions.size(); ++i) {
+        const std::size_t pos = positions[i];
+        const std::vector<FieldT> &leaf = leaf_contents[i];
+        hash_digest_type leaf_hash;
+        if (this->make_zk_) {
+                if (rand_it != proof.randomness_hashes.end()){
+                    const zk_salt_type zk_salt = *rand_it++;
+                   leaf_hash = this->leaf_hasher_->zk_hash(leaf, zk_salt);;
+                }
+        } else {
+            leaf_hash = this->leaf_hasher_->hash(leaf);
         }
-    } else {
-        for (auto &leaf : leaf_contents)
-        {
-            leaf_hashes.emplace_back(this->leaf_hasher_->hash(leaf));
-        }
+        S.push_back(std::make_pair(pos, leaf_hash));
     }
-
-    // TODO: Refactor this to have a single std::vector all contents hashes, and make each case modify that
-    // with a single transform at the bottom.
-    std::transform(positions.begin(), positions.end(), leaf_hashes.begin(),
-                std::back_inserter(S),
-                [](const std::size_t pos, const hash_digest_type &hash) {
-                    return std::make_pair(pos, hash);
-                });
 
     S.erase(std__unique(S.begin(), S.end()), S.end()); /* remove possible duplicates */
 

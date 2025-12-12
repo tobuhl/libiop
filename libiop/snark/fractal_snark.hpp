@@ -20,6 +20,8 @@
 #include "libiop/bcs/bcs_prover.hpp"
 #include "libiop/bcs/bcs_verifier.hpp"
 #include "libiop/relations/r1cs.hpp"
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 namespace libiop {
 

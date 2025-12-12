@@ -19,10 +19,10 @@
 namespace libiop {
 
 class pow_parameters {
-protected:
+public:
     std::size_t work_parameter_; /* The prover will do an expected 2^work_parameter units of work */
     std::size_t cost_per_hash_; /* How many units of work is one hash */
-public:
+    
     pow_parameters() {};
     pow_parameters(
         const size_t work_parameter,
@@ -38,10 +38,10 @@ public:
 
 template<typename FieldT, typename hash_digest_type>
 class pow {
-protected:
+public:
     pow_parameters parameters_;
     size_t digest_len_bytes_;
-public:
+
     pow() {};
     pow(const pow_parameters params,
         const size_t digest_len_bytes);

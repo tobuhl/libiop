@@ -5,6 +5,9 @@
 #include <libff/common/profiling.hpp>
 
 #include "libiop/algebra/fft.hpp"
+#include "libiop/relations/r1cs.hpp"
+
+#include <typeinfo>
 
 namespace libiop {
 
@@ -151,6 +154,143 @@ std::istream& deserialize_Field_Elem_vec(
     return in;
 }
 
+
+template<typename FieldT>
+std::ostream& serialize_r1cs_constraint_system(
+    std::ostream &out, const r1cs_constraint_system<FieldT> &r1cs)
+{
+    out << r1cs.primary_input_size_ << ",";
+    out << r1cs.auxiliary_input_size_ << ",";
+    out << r1cs.constraints_.size() << ",";
+
+    for (size_t i = 0; i < r1cs.constraints_.size(); ++i)
+    {
+        out << r1cs.constraints_[i].a_.terms.size();
+        out << ",";
+        for (auto t : r1cs.constraints_[i].a_.terms) {
+            out << t.index_ << ",";
+            serialize_FieldT(out, t.coeff_);
+        }
+
+        out << r1cs.constraints_[i].b_.terms.size();
+        out << ",";
+        for (auto t : r1cs.constraints_[i].b_.terms) {
+            out << t.index_ << ",";
+            serialize_FieldT(out, t.coeff_);
+        }
+
+        out << r1cs.constraints_[i].c_.terms.size();
+        out << ",";
+        for (auto t : r1cs.constraints_[i].c_.terms) {
+            out << t.index_ << ",";
+            serialize_FieldT(out, t.coeff_);
+        }
+
+    }
+    out << std::endl;
+
+    return out;
+}
+
+template<typename FieldT>
+std::istream& deserialize_r1cs_constraint_system(
+    std::istream &in, r1cs_constraint_system<FieldT> &r1cs)
+{
+    size_t primary_input_size_;
+    size_t auxiliary_input_size_;
+    size_t constraints_size;
+    char delimiter;
+
+    in >> primary_input_size_;
+    in >> delimiter;
+    assert(delimiter == char(','));
+
+    in >> auxiliary_input_size_;
+    in >> delimiter;
+    assert(delimiter == ',');
+
+    in >> constraints_size;
+    in >> delimiter;
+    assert(delimiter == ',');
+
+    r1cs.primary_input_size_ = primary_input_size_;
+    r1cs.auxiliary_input_size_ = auxiliary_input_size_;
+    
+    for (size_t i = 0; i < constraints_size; ++i)
+    {
+        // A 
+        size_t terms_A_size;
+        in >> terms_A_size;
+        in >> delimiter;
+        assert(delimiter == char(','));
+
+        linear_combination<FieldT> A;
+        for (size_t terms_A_idx = 0; terms_A_idx < terms_A_size; terms_A_idx++) {
+            size_t index_;
+            in >> index_;
+            in >> delimiter;
+            assert(delimiter == char(','));
+            FieldT coeff_ = deserialize_FieldT<FieldT>(in);
+            
+            linear_term<FieldT>  lin_term_des = linear_term<FieldT>();
+            lin_term_des.index_ = index_;
+            lin_term_des.coeff_ = coeff_;
+
+            A.add_term(lin_term_des);
+        }
+
+
+        // B
+        size_t terms_B_size;
+        in >> terms_B_size;
+        in >> delimiter;
+        assert(delimiter == char(','));
+
+        linear_combination<FieldT> B;
+        for (size_t terms_B_idx = 0; terms_B_idx < terms_B_size; terms_B_idx++) {
+            size_t index_;
+            in >> index_;
+            in >> delimiter;
+            assert(delimiter == char(','));
+            FieldT coeff_ = deserialize_FieldT<FieldT>(in);
+            
+            linear_term<FieldT> lin_term_des = linear_term<FieldT>();
+            lin_term_des.index_ = index_;
+            lin_term_des.coeff_ = coeff_;
+
+            B.add_term(lin_term_des);
+        }
+
+        // C 
+        size_t terms_C_size;
+        in >> terms_C_size;
+        in >> delimiter;
+        assert(delimiter == char(','));
+
+        linear_combination<FieldT> C;
+        for (size_t terms_C_idx = 0; terms_C_idx < terms_C_size; terms_C_idx++) {
+            size_t index_;
+            in >> index_;
+            in >> delimiter;
+            assert(delimiter == char(','));
+
+            FieldT coeff_ = deserialize_FieldT<FieldT>(in);
+            
+            linear_term<FieldT>  lin_term_des = linear_term<FieldT>();
+            lin_term_des.index_ = index_;
+            lin_term_des.coeff_ = coeff_;
+
+            C.add_term(lin_term_des);
+        }
+
+        r1cs.add_constraint(r1cs_constraint<FieldT>(A, B, C));
+    }
+    in >> delimiter;
+    assert(delimiter == char('\n'));
+
+    return in;
+}
+
 template<typename FieldT>
 std::ostream& serialize_Field_Elem_vec_of_vec(
     std::ostream &out, const std::vector<std::vector<FieldT>> &v)
@@ -182,7 +322,29 @@ std::istream& deserialize_Field_Elem_vec_of_vec(
     return in;
 }
 
-/* Currently only works for non-zk case. */
+template<typename MT_hash_type>
+std::ostream& serialize_proof_of_work(
+    std::ostream &out, const MT_hash_type &pow)
+{
+    serialize_FieldT(out,pow);
+    out << ",";
+    return out;
+}
+
+template<typename MT_hash_type>
+std::istream& deserialize_proof_of_work(
+    std::istream &in, MT_hash_type &pow)
+{
+    char delimiter;
+
+    MT_hash_type pow_in = deserialize_FieldT<MT_hash_type>(in);
+    in >> delimiter;
+    assert(delimiter == char(','));
+    pow = pow_in;
+
+    return in;
+}
+
 template<typename FieldT>
 std::ostream& serialize_vec_of_MT_proofs(
     std::ostream &out, const std::vector<merkle_tree_set_membership_proof<FieldT>> &v)
@@ -190,15 +352,56 @@ std::ostream& serialize_vec_of_MT_proofs(
     out << v.size();
     out << ",";
     for (size_t i = 0; i < v.size(); i++)
-    {
-        out << v[i].auxiliary_hashes.size();
+    {        
+        out << v[i].size_in_bytes()/32;
         out << ",";
-        for (size_t j = 0; j < v[i].auxiliary_hashes.size(); j++)
+        for (size_t j = 0; j < v[i].size_in_bytes()/32; j++)
         {
             serialize_FieldT<FieldT>(out, v[i].auxiliary_hashes[j]);
         }
+
+        size_t rand_size = v[i].randomness_hashes.size();
+        rand_size = v[i].randomness_hashes.size();
+
+        out << rand_size;
+        out << ",";
+
+        for (size_t j = 0; j < rand_size; j++)
+        {
+            out << v[i].randomness_hashes[j].size();
+            out << ",";
+
+            for (size_t r_str_pos = 0; r_str_pos < v[i].randomness_hashes[j].size(); r_str_pos++) {
+                out << static_cast<int>(static_cast<unsigned char>(char(v[i].randomness_hashes[j][r_str_pos])));
+                out << ",";
+            }
+        }
     }
+    
     return out;
+}
+
+
+template<typename zk_salt_type>
+zk_salt_type deserialize_zk_salt_type(
+    std::istream &in)
+{
+    size_t zk_salt_type_size;
+    char delimiter;
+    in >> zk_salt_type_size;
+    in >> delimiter;
+    assert(delimiter == char(','));
+
+    std::stringstream zk_salt_type_str;
+    std::string z_str;
+    int byte;
+    for (size_t i = 0; i < zk_salt_type_size; i++) {
+        in >> byte;
+        zk_salt_type_str << char(byte);
+        in >> delimiter;
+        assert(delimiter == char(','));
+    }
+    return zk_salt_type(zk_salt_type_str.str());
 }
 
 template<typename FieldT>
@@ -209,24 +412,45 @@ std::istream& deserialize_vec_of_MT_proofs(
     in >> size;
     char delimiter;
     in >> delimiter;
+
     assert(delimiter == char(','));
     for (size_t i = 0; i < size; i++)
     {
         size_t aux_hash_size;
         in >> aux_hash_size;
         in >> delimiter;
+
         assert(delimiter == char(','));
         std::vector<FieldT> auxiliary_hashes;
+        
         for (size_t j = 0; j < aux_hash_size; j++)
         {
-            auxiliary_hashes.emplace_back(deserialize_FieldT<FieldT>(in));
+            FieldT des = deserialize_FieldT<FieldT>(in);
+            auxiliary_hashes.emplace_back(des);
+        }
+
+        // randomness hashes
+        size_t rand_hash_size;
+        in >> rand_hash_size;
+        in >> delimiter;
+
+        assert(delimiter == char(','));
+        std::vector<zk_salt_type> randomness_hashes;
+        
+        for (size_t j = 0; j < rand_hash_size; j++)
+        {
+            zk_salt_type des = deserialize_zk_salt_type<zk_salt_type>(in);
+            randomness_hashes.emplace_back(des);
         }
         merkle_tree_set_membership_proof<FieldT> prf;
         prf.auxiliary_hashes = auxiliary_hashes;
+        prf.randomness_hashes = randomness_hashes;
         v.emplace_back(prf);
     }
     return in;
 }
+
+
 
 template<typename FieldT>
 std::istream& deserialize_Field_Elem_vec_of_vec_of_vec(
@@ -325,6 +549,12 @@ std::ostream& serialize_transcript_internal(
     out << "\n";
     serialize_vec_of_MT_proofs(out, t.MT_set_membership_proofs_);
     out << "\n";
+    serialize_proof_of_work(out, t.proof_of_work_);
+    out << "\n";
+    // serialize_r1cs_constraint_system(out,t.constraint_system_);
+    // out << "\n";
+    // serialize_Field_Elem_vec<FieldT>(out,t.primary_input_);
+    // out << "\n";
     return out;
 }
 
@@ -352,6 +582,9 @@ std::istream& deserialize_transcript_internal(
     in.get(delimiter);
     assert(delimiter == '\n');
     deserialize_vec_of_MT_proofs(in, t.MT_set_membership_proofs_);
+    in.get(delimiter);
+    assert(delimiter == '\n');
+    deserialize_proof_of_work(in, t.proof_of_work_);
     in.get(delimiter);
     assert(delimiter == '\n');
     return in;

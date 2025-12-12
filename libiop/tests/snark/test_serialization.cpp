@@ -58,7 +58,7 @@ TEST(TranscriptSerializationOnSnark, SimpleTest) {
 
     /* Actual SNARK test */
     for (std::size_t i = 0; i < 2; i++) {
-        const bool make_zk = false;
+        const bool make_zk = (i == 0) ? false : true;
         aurora_snark_parameters<FieldT, hash_type> params(
             security_parameter,
             ldt_reducer_soundness_type,

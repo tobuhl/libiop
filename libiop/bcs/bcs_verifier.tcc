@@ -78,6 +78,8 @@ void bcs_verifier<FieldT, hash_digest_type>::seal_interaction_registrations()
             std::vector<std::vector< FieldT> > MT_leaf_columns =
                 this->query_responses_to_MT_leaf_responses(query_positions, query_responses, round);
 
+            std::vector<merkle_tree<FieldT, hash_digest_type> > test1 = this->Merkle_trees_;
+            merkle_tree<FieldT, hash_digest_type> test2 = this->Merkle_trees_[processed_MTs];
             // Step 2) validate proof
             const bool proof_is_valid = this->Merkle_trees_[processed_MTs]
                 .validate_set_membership_proof(root, MT_leaf_positions, MT_leaf_columns, proof);

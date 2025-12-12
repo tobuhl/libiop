@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include <typeinfo>
+
 #include <libff/common/profiling.hpp>
 #include "libiop/common/cpp17_bits.hpp"
 #include <libff/common/utils.hpp>
