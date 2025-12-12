@@ -53,7 +53,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     )
   set(
     CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -std=c++03 -Wall -Wextra -Wfatal-errors ${DISABLED_WARNINGS} -L/usr/local/lib"
+    "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wfatal-errors ${DISABLED_WARNINGS} -L/usr/local/lib"
     )
   # Default optimizations flags (to override, use -DOPT_FLAGS=...)
   if("${OPT_FLAGS}" STREQUAL "")

@@ -353,9 +353,9 @@ std::ostream& serialize_vec_of_MT_proofs(
     out << ",";
     for (size_t i = 0; i < v.size(); i++)
     {        
-        out << v[i].size_in_bytes()/32;
+        out << v[i].auxiliary_hashes.size();
         out << ",";
-        for (size_t j = 0; j < v[i].size_in_bytes()/32; j++)
+        for (size_t j = 0; j < v[i].auxiliary_hashes.size(); j++)
         {
             serialize_FieldT<FieldT>(out, v[i].auxiliary_hashes[j]);
         }
